@@ -1,4 +1,4 @@
-# db2struct [![Build Status](https://travis-ci.org/Shelnutt2/db2struct.svg?branch=master)](https://travis-ci.org/Shelnutt2/db2struct) [![Coverage Status](https://coveralls.io/repos/github/Shelnutt2/db2struct/badge.svg?branch=1-add-coveralls-support)](https://coveralls.io/github/Shelnutt2/db2struct?branch=1-add-coveralls-support) [![GoDoc](https://godoc.org/github.com/Shelnutt2/db2struct?status.svg)](https://godoc.org/github.com/Shelnutt2/db2struct)
+# db2struct
 
 The db2struct package produces a usable golang struct from a given database table for use in a .go file.
 
@@ -16,7 +16,7 @@ Db2Struct is based/inspired by the work of ChimeraCoder's gojson package
 ## Usage
 
 ```BASH
-go get github.com/Shelnutt2/db2struct/db2struct
+go get github.com/hlf513/db2struct/db2struct
 db2struct --host localhost -d test -t test_table --package myGoPackage --struct testTable -p --user testUser
 ```
 
@@ -26,7 +26,7 @@ MySQL table named users with four columns: id (int), user_name (varchar(255)), n
 
 Example below uses guregu's null package, but without the option it procuded the sql.NullInt64 and so on.
 ```BASH
-db2struct --host localhost -d example.com -t users --package example --struct user -p --user exampleUser --guregu --gorm
+db2struct --host localhost --user mysqlUser -p password -d database -t table --package example --struct user -k primaryKey --guregu --gorm --json
 ```
 
 Output:

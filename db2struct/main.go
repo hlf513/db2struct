@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Shelnutt2/db2struct"
+	"github.com/hlf513/db2struct"
 	goopt "github.com/droundy/goopt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/howeyc/gopass"
@@ -21,6 +21,8 @@ var mariadbUser = goopt.String([]string{"-u", "--user"}, "user", "user to connec
 var verbose = goopt.Flag([]string{"-v", "--verbose"}, []string{}, "Enable verbose output", "")
 var packageName = goopt.String([]string{"--package"}, "", "name to set for package")
 var structName = goopt.String([]string{"--struct"}, "", "name to set for struct")
+var primaryKey= goopt.String([]string{"-k", "--primaryKey"}, "ID", "name to set for primaryKey")
+
 
 var jsonAnnotation = goopt.Flag([]string{"--json"}, []string{"--no-json"}, "Add json annotations (default)", "Disable json annotations")
 var gormAnnotation = goopt.Flag([]string{"--gorm"}, []string{}, "Add gorm annotations (tags)", "")
@@ -35,7 +37,7 @@ func init() {
 		return "Mariadb http Check"
 	}
 	goopt.Version = "0.0.2"
-	goopt.Summary = "db2struct [-H] [-p] [-v] --package pkgName --struct structName --database databaseName --table tableName"
+	goopt.Summary = "db2struct [-H] [-p] [-v] --package pkgName --struct structName --database databaseName --table tableName --gorm --json -k ID "
 
 	//Parse options
 	goopt.Parse(nil)
@@ -96,7 +98,7 @@ func main() {
 		*packageName = "newpackage"
 	}
 	// Generate struct string based on columnDataTypes
-	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes)
+	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *primaryKey)
 
 	if err != nil {
 		fmt.Println("Error in creating struct from json: " + err.Error())
