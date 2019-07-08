@@ -5,9 +5,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/hlf513/db2struct"
-	goopt "github.com/droundy/goopt"
+	"github.com/droundy/goopt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/hlf513/db2struct"
 	"github.com/howeyc/gopass"
 )
 
@@ -21,8 +21,10 @@ var mariadbUser = goopt.String([]string{"-u", "--user"}, "user", "user to connec
 var verbose = goopt.Flag([]string{"-v", "--verbose"}, []string{}, "Enable verbose output", "")
 var packageName = goopt.String([]string{"--package"}, "", "name to set for package")
 var structName = goopt.String([]string{"--struct"}, "", "name to set for struct")
-var primaryKey= goopt.String([]string{"-k", "--primaryKey"}, "ID", "name to set for primaryKey")
-
+var primaryKey = goopt.String([]string{"-k", "--primaryKey"}, "ID", "name to set for primaryKey")
+var createdKey = goopt.String([]string{"--cd", "--createdAtKey"}, "CreatedAt", "name to set for createdAtKey")
+var updatedKey = goopt.String([]string{"--upd", "--updatedAtKey"}, "UpdatedAt", "name to set for updatedAtKey")
+var dbModel = goopt.String([]string{"--db", "--dbModel"}, "db", "name to set for dbModel")
 
 var jsonAnnotation = goopt.Flag([]string{"--json"}, []string{"--no-json"}, "Add json annotations (default)", "Disable json annotations")
 var gormAnnotation = goopt.Flag([]string{"--gorm"}, []string{}, "Add gorm annotations (tags)", "")
@@ -98,7 +100,7 @@ func main() {
 		*packageName = "newpackage"
 	}
 	// Generate struct string based on columnDataTypes
-	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *primaryKey)
+	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *primaryKey, *createdKey, *updatedKey, *dbModel)
 
 	if err != nil {
 		fmt.Println("Error in creating struct from json: " + err.Error())
