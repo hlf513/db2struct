@@ -16,7 +16,13 @@ Db2Struct is based/inspired by the work of ChimeraCoder's gojson package
 ## Usage
 
 ```BASH
+# install null.v3
+go get gopkg.in/guregu/null.v3
+
+# install db2struct
 go get github.com/hlf513/db2struct/db2struct
+
+# run command
 db2struct --host localhost -d test -t test_table --package myGoPackage --struct testTable -p --user testUser
 ```
 
@@ -26,7 +32,20 @@ MySQL table named users with four columns: id (int), user_name (varchar(255)), n
 
 Example below uses guregu's null package, but without the option it procuded the sql.NullInt64 and so on.
 ```BASH
-db2struct --host localhost --user mysqlUser -p password -d database -t table --package example --struct user -k primaryKey --guregu --gorm --json
+db2struct --host localhost --user mysqlUser -p password -d database -t table --package example --struct user -k primaryKey --guregu --gorm --json --cd CreatedAt --upd UpdatedAt --db common.DB
+# --host 数据库地址
+# --user 数据库用户名
+# -p     数据库密码
+# -t     数据库表
+# -package 生成的 go 包名
+# -struct 生成的 go 结构名
+# -k      主键Key
+# -guregu 使用 guregu 的 null 包
+# --gorm  添加 gorm 标签
+# --json  添加 json 标签
+# --cd   创建时间字段
+# --upd  更新事件字段
+# --db   DB 结构地址
 ```
 
 Output:
