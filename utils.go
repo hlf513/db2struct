@@ -90,7 +90,7 @@ func Generate(columnTypes map[string]map[string]string, tableName string, struct
 		dbTypes)
 	if gormAnnotation == true {
 		tableNameFunc := "// TableName sets the insert table name for this struct type\n" +
-			"func (" + strings.ToLower(string(structName[0])) + " *" + structName + ") TableName() string {\n" +
+			"func TableName() string {\n" +
 			"	return \"" + tableName + "\"" +
 			"}"
 		src = fmt.Sprintf("%s\n%s", src, tableNameFunc)
@@ -104,11 +104,11 @@ func Generate(columnTypes map[string]map[string]string, tableName string, struct
 }
 
 func tpl(structName, primaryKey, createdKey, updatedKey, dbModel string) string {
-	tpl := "func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") Create(data *" + structName + ") (int, error) {\n" +
-		"	if "+ dbModel +".NewRecord(data) {\n" +
-		"		data." + createdKey + "= time.Now() \n" +
-		"		data." + updatedKey + "= time.Now()	\n" +
-		"		if err := "+ dbModel +".Create(data).Error; err != nil {\n" +
+	tpl := "func Create(data *" + structName + ") (int, error) {\n" +
+		"	if " + dbModel + ".NewRecord(data) {\n" +
+		"		data." + fmtFieldName(createdKey) + "= time.Now() \n" +
+		"		data." + fmtFieldName(updatedKey) + "= time.Now()	\n" +
+		"		if err := " + dbModel + ".Create(data).Error; err != nil {\n" +
 		"			return 0, err\n" +
 		"		}\n" +
 		"		return data." + primaryKey + ", nil\n" +
@@ -116,85 +116,122 @@ func tpl(structName, primaryKey, createdKey, updatedKey, dbModel string) string 
 		"	return 0, errors.New(\"this is not a new record\")\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") FetchOneById(id int, fields string) (" + structName + ", error) {\n" +
+		"func FetchOneById(id int, fields string) (*" + structName + ", error) {\n" +
 		"	var ret " + structName + "\n" +
 		"\n" +
-		"	if err := "+ dbModel +".Select(fields).First(&ret, id).Error; err != nil {\n" +
-		"		return ret, err\n" +
+		"	err := " + dbModel + ".Select(fields).First(&ret, id).Error\n" +
+		"\n" +
+		"	if err == gorm.ErrRecordNotFound {\n" +
+		"		return nil, nil\n" +
 		"	}\n" +
 		"\n" +
-		"	return ret, nil\n" +
+		" 	if err != nil {\n" +
+		"		return nil,err\n" +
+		"	}\n" +
+		"\n" +
+		"	return &ret, nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") FetchOne(where map[string]interface{}, fields string) (" + structName + ", error) {\n" +
+		"func FetchOne(where map[string]interface{}, fields string) (*" + structName + ", error) {\n" +
 		"	var ret " + structName + "\n" +
 		"\n" +
-		"	q := "+ dbModel +".Select(fields)\n" +
+		"	q := " + dbModel + ".Select(fields)\n" +
 		"	for k, v := range where {\n" +
-		"		q = q.Where(k, v)\n" +
+		" 		if v != nil {\n" +
+		"			q = q.Where(k, v)\n" +
+		"		} else {\n" +
+		"			q = q.Where(k)\n" +
+		"		}\n" +
 		"	}\n" +
 		"\n" +
-		"	if err := q.First(&ret).Error; err != nil {\n" +
-		"		return ret, err\n" +
+		"	err := q.First(&ret).Error\n" +
+		"\n" +
+		"	if err == gorm.ErrRecordNotFound {\n" +
+		"		return nil, nil\n" +
 		"	}\n" +
 		"\n" +
-		"	return ret, nil\n" +
+		" 	if err != nil {\n" +
+		"		return nil,err\n" +
+		"	}\n" +
+		"\n" +
+		"	return &ret, nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") FetchByWhere(where map[string]interface{}, fields string) ([]" + structName + ", error) {\n" +
-		"	var ret []" + structName + "\n" +
+		"func FetchByWhere(where map[string]interface{}, fields string) ([]*" + structName + ", error) {\n" +
+		"	var ret []*" + structName + "\n" +
 		"\n" +
-		"	q := "+ dbModel +".Select(fields)\n" +
+		"	q := " + dbModel + ".Select(fields)\n" +
 		"	for k, v := range where {\n" +
-		"		q = q.Where(k, v)\n" +
+		" 		if v != nil {\n" +
+		"			q = q.Where(k, v)\n" +
+		"		} else {\n" +
+		"			q = q.Where(k)\n" +
+		"		}\n" +
 		"	}\n" +
 		"\n" +
-		"	if err := q.Find(&ret).Error; err != nil {\n" +
-		"		return ret, err\n" +
+		"	err := q.Find(&ret).Error\n" +
+		"\n" +
+		"	if err == gorm.ErrRecordNotFound {\n" +
+		"		return nil, nil\n" +
+		"	}\n" +
+		"\n" +
+		" 	if err != nil {\n" +
+		"		return nil,err\n" +
 		"	}\n" +
 		"\n" +
 		"	return ret, nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") FetchByIds(ids []int, fields string) ([]" + structName + ", error) {\n" +
-		"	var ret []" + structName + "\n" +
+		"func FetchByIds(ids []int, fields string) ([]*" + structName + ", error) {\n" +
+		"	var ret []*" + structName + "\n" +
 		"\n" +
-		"	if err := "+ dbModel +".Select(fields).Find(&ret, ids).Error; err != nil {\n" +
-		"		return ret, err\n" +
+		"	err := " + dbModel + ".Select(fields).Find(&ret, ids).Error\n" +
+		"\n" +
+		"	if err == gorm.ErrRecordNotFound {\n" +
+		"		return nil, nil\n" +
 		"	}\n" +
+		"\n" +
+		" 	if err != nil {\n" +
+		"		return nil,err\n" +
+		"	}\n" +
+		"\n" +
 		"	return ret, nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") DeleteOneById(id int) error {\n" +
+		"func DeleteOneById(id int) error {\n" +
 		"	d := " + structName + "{" + primaryKey + ": id}\n" +
-		"	if err := "+ dbModel +".Delete(&d).Limit(1).Error; err != nil {\n" +
+		"	if err := " + dbModel + ".Delete(&d).Limit(1).Error; err != nil {\n" +
 		"		return err\n" +
 		"	}\n" +
 		"	return nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") DeleteByWhere(where map[string]interface{}) error {\n" +
+		"func DeleteByWhere(where map[string]interface{}) error {\n" +
 		" 	q := " + dbModel + "\n" +
 		" 	for k, v := range where {\n" +
-		" 		q = q.Where(k, v)\n" +
+		" 		if v != nil {\n" +
+		"			q = q.Where(k, v)\n" +
+		"		} else {\n" +
+		"			q = q.Where(k)\n" +
+		"		}\n" +
 		" 	}\n" +
-		"	if err := q.Delete(" + strings.ToLower(string(structName[0])) + ").Error; err != nil {\n" +
+		"	if err := q.Delete( " + structName + "{}).Error; err != nil {\n" +
 		"		return err\n" +
 		"	}\n" +
 		"	return nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") UpdateOneById(id int, set map[string]interface{}) error {\n" +
+		"func UpdateOneById(id int, set map[string]interface{}) error {\n" +
 		"	set[\"" + updatedKey + "\"] = time.Now()\n" +
-		"	if err := "+ dbModel +".Model(" + structName + "{" + primaryKey + ": id}).Update(set).Limit(1).Error; err != nil {\n" +
+		"	if err := " + dbModel + ".Model(" + structName + "{" + primaryKey + ": id}).Update(set).Limit(1).Error; err != nil {\n" +
 		"		return err\n" +
 		"	}\n" +
 		"	return nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") UpdateByWhere(where, set map[string]interface{}) error {\n" +
+		"func UpdateByWhere(where, set map[string]interface{}) error {\n" +
 		"	set[\"" + updatedKey + "\"] = time.Now()\n" +
-		"	q := "+ dbModel +".Model(" + strings.ToLower(string(structName[0])) + ")\n" +
+		"	q := " + dbModel + ".Model( " + structName + "{})\n" +
 		"	for k, v := range where {\n" +
 		"		q = q.Where(k, v)\n" +
 		"	}\n" +
@@ -205,12 +242,16 @@ func tpl(structName, primaryKey, createdKey, updatedKey, dbModel string) string 
 		"	return nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") CountByWhere(where map[string]interface{}) (int, error) {\n" +
+		"func CountByWhere(where map[string]interface{}) (int, error) {\n" +
 		"	c := 0\n" +
 		"\n" +
-		"	q := "+ dbModel +".Model(" + strings.ToLower(string(structName[0])) + ")\n" +
+		"	q := " + dbModel + ".Model( " + structName + "{})\n" +
 		"	for k, v := range where {\n" +
-		"		q = q.Where(k, v)\n" +
+		" 		if v != nil {\n" +
+		"			q = q.Where(k, v)\n" +
+		"		} else {\n" +
+		"			q = q.Where(k)\n" +
+		"		}\n" +
 		"	}\n" +
 		"	if err := q.Count(&c).Error; err != nil {\n" +
 		"		return 0, err\n" +
@@ -219,15 +260,23 @@ func tpl(structName, primaryKey, createdKey, updatedKey, dbModel string) string 
 		"	return c, nil\n" +
 		"}\n" +
 		"\n" +
-		"func(" + strings.ToLower(string(structName[0])) + " *" + structName + ") Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]" + structName + ", error) {\n" +
-		"	var ret []" + structName + "\n" +
+		"func Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*" + structName + ", error) {\n" +
+		"	var ret []*" + structName + "\n" +
 		"\n" +
-		"	q := "+ dbModel +".Select(field)\n" +
+		"	q := " + dbModel + ".Select(field)\n" +
 		"	for k, v := range where {\n" +
-		"		q = q.Where(k, v)\n" +
+		" 		if v != nil {\n" +
+		"			q = q.Where(k, v)\n" +
+		"		} else {\n" +
+		"			q = q.Where(k)\n" +
+		"		}\n" +
 		"	}\n" +
 		"\n" +
 		"	if others != nil {\n" +
+		"		if g, ok := others[0][\"joins\"]; ok {\n" +
+		"			q = q.Joins(g.(string))\n" +
+		"		}\n" +
+		"\n" +
 		"		if g, ok := others[0][\"group\"]; ok {\n" +
 		"			q = q.Group(g.(string))\n" +
 		"		}\n" +
