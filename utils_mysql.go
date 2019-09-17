@@ -61,6 +61,8 @@ func GetColumnsFromMysqlTable(mariadbUser string, mariadbPassword string, mariad
 	return &columnDataTypes, err
 }
 
+var pk, createdAtKey, updatedATKey string
+
 // Generate go struct entries for a map[string]interface{} structure
 func generateMysqlTypes(obj map[string]map[string]string, depth int, jsonAnnotation bool, gormAnnotation bool, gureguTypes bool) string {
 	structure := "struct {"
@@ -80,7 +82,18 @@ func generateMysqlTypes(obj map[string]map[string]string, depth int, jsonAnnotat
 
 		primary := ""
 		if mysqlType["primary"] == "PRI" {
+			pk = key
 			primary = ";primary_key"
+		}
+
+		if mysqlType["value"] == "timestamp" || mysqlType["value"] == "datetime" {
+			if strings.Contains(key, "create") {
+				createdAtKey = key
+			}
+			if strings.Contains(key, "update") {
+				updatedATKey = key
+			}
+
 		}
 
 		// Get the corresponding go value type for this mysql type

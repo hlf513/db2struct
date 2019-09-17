@@ -20,11 +20,10 @@ var mariadbPassword *string
 var mariadbUser = goopt.String([]string{"-u", "--user"}, "user", "user to connect to database")
 var verbose = goopt.Flag([]string{"-v", "--verbose"}, []string{}, "Enable verbose output", "")
 var packageName = goopt.String([]string{"--package"}, "", "name to set for package")
+// 默认使用表名；一般情况下可忽略
 var structName = goopt.String([]string{"--struct"}, "", "name to set for struct")
-var primaryKey = goopt.String([]string{"-k", "--primaryKey"}, "ID", "name to set for primaryKey")
-var createdKey = goopt.String([]string{"--cd", "--createdAtKey"}, "CreatedAt", "name to set for createdAtKey")
-var updatedKey = goopt.String([]string{"--upd", "--updatedAtKey"}, "UpdatedAt", "name to set for updatedAtKey")
-var dbModel = goopt.String([]string{"--db", "--dbModel"}, "db", "name to set for dbModel")
+var createdKey = goopt.String([]string{"--create_at", "--createdAtKey"}, "", "name to set for createdAtKey")
+var updatedKey = goopt.String([]string{"--update_at", "--updatedAtKey"}, "", "name to set for updatedAtKey")
 
 var jsonAnnotation = goopt.Flag([]string{"--json"}, []string{"--no-json"}, "Add json annotations (default)", "Disable json annotations")
 var gormAnnotation = goopt.Flag([]string{"--gorm"}, []string{}, "Add gorm annotations (tags)", "")
@@ -85,7 +84,7 @@ func main() {
 	}
 
 	columnDataTypes, err := db2struct.GetColumnsFromMysqlTable(*mariadbUser, *mariadbPassword, mariadbHost, *mariadbPort, *mariadbDatabase, *mariadbTable)
-
+	
 	if err != nil {
 		fmt.Println("Error in selecting column data information from mysql information schema")
 		return
@@ -93,14 +92,15 @@ func main() {
 
 	// If structName is not set we need to default it
 	if structName == nil || *structName == "" {
-		*structName = "newstruct"
+		// 默认使用表名
+		*structName = db2struct.FmtFieldName(*mariadbTable)
 	}
 	// If packageName is not set we need to default it
 	if packageName == nil || *packageName == "" {
 		*packageName = "newpackage"
 	}
 	// Generate struct string based on columnDataTypes
-	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *primaryKey, *createdKey, *updatedKey, *dbModel)
+	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *createdKey, *updatedKey)
 
 	if err != nil {
 		fmt.Println("Error in creating struct from json: " + err.Error())
