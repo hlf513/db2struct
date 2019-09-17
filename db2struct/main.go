@@ -97,7 +97,7 @@ func main() {
 	}
 	// If packageName is not set we need to default it
 	if packageName == nil || *packageName == "" {
-		*packageName = "newpackage"
+		*packageName = "model"
 	}
 	// Generate struct string based on columnDataTypes
 	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *createdKey, *updatedKey)

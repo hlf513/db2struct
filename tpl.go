@@ -32,11 +32,9 @@ func (a *{{.StructName|lcfirst}}) FetchOneById(id int, fields string) (*{{.Struc
 	var ret {{.StructName}}
 
 	err := a.db.Select(fields).First(&ret, id).Error
-
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +55,6 @@ func (a *{{.StructName|lcfirst}}) FetchOne(where map[string]interface{}, fields 
 	}
 
 	err := q.First(&ret).Error
-
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -82,7 +79,6 @@ func (a *{{.StructName|lcfirst}}) FetchByWhere(where map[string]interface{}, fie
 	}
 
 	err := q.Find(&ret).Error
-
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -98,7 +94,6 @@ func (a *{{.StructName|lcfirst}}) FetchByIds(ids []int, fields string) ([]*{{.St
 	var ret []*{{.StructName}}
 
 	err := a.db.Select(fields).Find(&ret, ids).Error
-
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -143,6 +138,7 @@ func (a *{{.StructName|lcfirst}}) UpdateOneById(id int, set map[string]interface
 
 func (a *{{.StructName|lcfirst}}) UpdateByWhere(where, set map[string]interface{}) error {
 	set["{{.UpdatedAtKey}}"] = time.Now()
+
 	q := a.db.Model({{.StructName}}{})
 	for k, v := range where {
 		q = q.Where(k, v)

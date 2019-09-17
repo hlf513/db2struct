@@ -87,17 +87,22 @@ var Debug = false
 func Generate(columnTypes map[string]map[string]string, tableName string, structName string, pkgName string, jsonAnnotation bool, gormAnnotation bool, gureguTypes bool, createdKey, updatedKey string) ([]byte, error) {
 	var dbTypes string
 	dbTypes = generateMysqlTypes(columnTypes, 0, jsonAnnotation, gormAnnotation, gureguTypes)
-	src := fmt.Sprintf("package %s\ntype %s %s}",
-		pkgName,
+	// package
+	src := fmt.Sprintf("package %s", pkgName)
+	// import
+	src = fmt.Sprintf("%s\n%s", src, generateImport())
+	// type struct
+	src = fmt.Sprintf("%s\ntype %s %s}",
+		src,
 		structName,
 		dbTypes)
 	if gormAnnotation == true {
-		tableNameFunc := "// TableName sets the insert table name for this struct type\n" +
-			"func TableName() string {\n" +
-			"	return \"" + tableName + "\"" +
-			"}"
-		src = fmt.Sprintf("%s\n%s", src, tableNameFunc)
 		src = fmt.Sprintf("%s\n%s", src, tpl(structName, createdKey, updatedKey))
+		tableNameFunc :=
+			"func (a *" + Lcfirst(structName) + ") TableName() string {\n" +
+				"	return \"" + tableName + "\"" +
+				"}"
+		src = fmt.Sprintf("%s\n%s", src, tableNameFunc)
 	}
 	formatted, err := format.Source([]byte(src))
 	if err != nil {

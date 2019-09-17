@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 )
+
+var sortFields []string
 
 // GetColumnsFromMysqlTable Select column details from information schema and return map of map
 func GetColumnsFromMysqlTable(mariadbUser string, mariadbPassword string, mariadbHost string, mariadbPort int, mariadbDatabase string, mariadbTable string) (*map[string]map[string]string, error) {
@@ -56,24 +57,39 @@ func GetColumnsFromMysqlTable(mariadbUser string, mariadbPassword string, mariad
 		rows.Scan(&column, &columnKey, &dataType, &nullable)
 
 		columnDataTypes[column] = map[string]string{"value": dataType, "nullable": nullable, "primary": columnKey}
+		sortFields = append(sortFields, column)
 	}
 
 	return &columnDataTypes, err
 }
 
 var pk, createdAtKey, updatedATKey string
+var haveNull bool
+
+func generateImport() string {
+	i := `
+import (
+	"errors"
+	"time"
+	
+	"github.com/jinzhu/gorm"
+`
+	if haveNull == true {
+		i = fmt.Sprintf("%s\"gopkg.in/guregu/null.v3\"", i)
+	}
+	i += `
+)
+`
+	return i
+}
 
 // Generate go struct entries for a map[string]interface{} structure
 func generateMysqlTypes(obj map[string]map[string]string, depth int, jsonAnnotation bool, gormAnnotation bool, gureguTypes bool) string {
 	structure := "struct {"
 
-	keys := make([]string, 0, len(obj))
-	for key := range obj {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
+	l := len(sortFields)
+	for i := 0; i < l; i++ {
+		key := sortFields[i]
 		mysqlType := obj[key]
 		nullable := false
 		if mysqlType["nullable"] == "YES" {
@@ -93,7 +109,6 @@ func generateMysqlTypes(obj map[string]map[string]string, depth int, jsonAnnotat
 			if strings.Contains(key, "update") {
 				updatedATKey = key
 			}
-
 		}
 
 		// Get the corresponding go value type for this mysql type
@@ -108,7 +123,8 @@ func generateMysqlTypes(obj map[string]map[string]string, depth int, jsonAnnotat
 			annotations = append(annotations, fmt.Sprintf("gorm:\"column:%s%s\"", key, primary))
 		}
 		if jsonAnnotation == true {
-			annotations = append(annotations, fmt.Sprintf("json:\"%s%s\"", key, primary))
+			//annotations = append(annotations, fmt.Sprintf("json:\"%s%s\"", key, primary))
+			annotations = append(annotations, fmt.Sprintf("json:\"%s\"", key))
 		}
 		if len(annotations) > 0 {
 			structure += fmt.Sprintf("\n%s %s `%s`",
@@ -131,6 +147,7 @@ func mysqlTypeToGoType(mysqlType string, nullable bool, gureguTypes bool) string
 	case "tinyint", "int", "smallint", "mediumint":
 		if nullable {
 			if gureguTypes {
+				haveNull = true
 				return gureguNullInt
 			}
 			return sqlNullInt
@@ -139,6 +156,7 @@ func mysqlTypeToGoType(mysqlType string, nullable bool, gureguTypes bool) string
 	case "bigint":
 		if nullable {
 			if gureguTypes {
+				haveNull = true
 				return gureguNullInt
 			}
 			return sqlNullInt
@@ -147,6 +165,7 @@ func mysqlTypeToGoType(mysqlType string, nullable bool, gureguTypes bool) string
 	case "char", "enum", "varchar", "longtext", "mediumtext", "text", "tinytext":
 		if nullable {
 			if gureguTypes {
+				haveNull = true
 				return gureguNullString
 			}
 			return sqlNullString
@@ -154,12 +173,14 @@ func mysqlTypeToGoType(mysqlType string, nullable bool, gureguTypes bool) string
 		return "string"
 	case "date", "datetime", "time", "timestamp":
 		if nullable && gureguTypes {
+			haveNull = true
 			return gureguNullTime
 		}
 		return golangTime
 	case "decimal", "double":
 		if nullable {
 			if gureguTypes {
+				haveNull = true
 				return gureguNullFloat
 			}
 			return sqlNullFloat
@@ -168,6 +189,7 @@ func mysqlTypeToGoType(mysqlType string, nullable bool, gureguTypes bool) string
 	case "float":
 		if nullable {
 			if gureguTypes {
+				haveNull = true
 				return gureguNullFloat
 			}
 			return sqlNullFloat
