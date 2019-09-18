@@ -37,8 +37,8 @@ db2struct --host localhost --user mysqlUser -p password -d database -t table --p
 # --user 数据库用户名
 # -p     数据库密码
 # -t     数据库表
-# -package 生成的 go 包名，默认是 model
-# -struct 生成的 go 结构名，默认是 表名
+# --package 生成的 go 包名，默认是 model
+# --struct 生成的 go 结构名，默认是 表名
 # --guregu 使用 guregu 的 null 包
 # --gorm  添加 gorm 标签，以及常用方法
 # --json  添加 json 标签
