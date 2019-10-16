@@ -23,7 +23,7 @@ type {{.StructName}}Repository interface {
 	UpdateByWhere(where, set map[string]interface{}) error
 
 	CountByWhere(where map[string]interface{}) (int, error)
-	Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*Task, error)
+	Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*{{.StructName}}, error)
 }
 
 type {{.StructName | lcfirst }} struct {
