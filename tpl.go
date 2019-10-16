@@ -8,11 +8,29 @@ import "unicode"
 // UpdatedAtKey string
 func getTpl() string {
 	return `
+type {{.StructName}}Repository interface {
+	Create(data *{{.StructName}}) (int, error)
+
+	FetchOneById(id int, fields string) (*{{.StructName}}, error)
+	FetchOne(where map[string]interface{}, fields string) (*{{.StructName}}, error)
+	FetchByWhere(where map[string]interface{}, fields string) ([]*{{.StructName}}, error)
+	FetchByIds(ids []int, fields string) ([]*{{.StructName}}, error)
+
+	DeleteOneById(id int) error
+	DeleteByWhere(where map[string]interface{}) error
+
+	UpdateOneById(id int, set map[string]interface{}) error
+	UpdateByWhere(where, set map[string]interface{}) error
+
+	CountByWhere(where map[string]interface{}) (int, error)
+	Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*Task, error)
+}
+
 type {{.StructName | lcfirst }} struct {
 	db *gorm.DB
 }
 
-func New{{.StructName}}(db *gorm.DB) *{{.StructName|lcfirst}} {
+func New{{.StructName}}(db *gorm.DB) {{.StructName}}Repository {
 	return &{{.StructName | lcfirst }}{db}
 }
 
