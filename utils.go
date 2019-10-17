@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"go/format"
 	"html/template"
+	"io/ioutil"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"unicode"
@@ -82,9 +84,73 @@ var intToWordMap = []string{
 //Debug level logging
 var Debug = false
 
+// 写入不同目录的文件中(分层)
+func Generate(columnTypes map[string]map[string]string, tableName string, structName string, pkgName string, jsonAnnotation bool, gormAnnotation bool, gureguTypes bool, createdKey, updatedKey string) ([]byte, error) {
+	var dbTypes string
+	dbTypes = generateMysqlTypes(columnTypes, 0, jsonAnnotation, gormAnnotation, gureguTypes)
+	// package
+	src := fmt.Sprintf("package %s", pkgName)
+	// import
+	src = fmt.Sprintf("%s\n%s", src, generateAllImport())
+	// type struct
+	src = fmt.Sprintf("%s\ntype %s %s}",
+		src,
+		structName,
+		dbTypes)
+	if gormAnnotation == true {
+		// model
+		if _, err := os.Stat("./model"); os.IsNotExist(err) {
+			err := os.Mkdir("model",0755)
+			if err != nil{
+				log.Fatal(err.Error())
+			}
+		}
+		formatted, err := format.Source([]byte(src))
+		if err != nil {
+			log.Fatalf("error formatting: %s, was formatting\n%s", err, src)
+		}
+		path := fmt.Sprintf("model/%s_model.go", tableName)
+		_ = ioutil.WriteFile(path, formatted, 0644)
+		// repository_interface
+		if _, err := os.Stat("./repository"); os.IsNotExist(err) {
+			err := os.Mkdir("repository",0755)
+			if err != nil{
+				log.Fatal(err.Error())
+			}
+		}
+		src := fmt.Sprintf("package %s", "repository")
+		src = fmt.Sprintf("%s\n%s", src, repoInterfaceTpl(structName, createdKey, updatedKey, tableName))
+		formatted2, err := format.Source([]byte(src))
+		if err != nil {
+			log.Fatalf("error formatting: %s, was formatting\n%s", err, src)
+		}
+		path2 := fmt.Sprintf("repository/%s_repository.go", tableName)
+		_ = ioutil.WriteFile(path2, formatted2, 0644)
+
+		// repository
+		if _, err := os.Stat("./repository/mysql"); os.IsNotExist(err) {
+			err := os.Mkdir("repository/mysql",0755)
+			if err != nil{
+				log.Fatal(err.Error())
+			}
+		}
+		src2 := fmt.Sprintf("package %s", "mysql")
+		src2 = fmt.Sprintf("%s\n%s", src2, generateImport())
+		src2 = fmt.Sprintf("%s\n%s", src2, repoTpl(structName, createdKey, updatedKey, tableName))
+		formatted3, err := format.Source([]byte(src2))
+		if err != nil {
+			log.Fatalf("error formatting: %s, was formatting\n%s", err, src2)
+		}
+		path3 := fmt.Sprintf("repository/mysql/%s_repository.go", tableName)
+		_ = ioutil.WriteFile(path3, formatted3, 0644)
+	}
+	return []byte("done"), nil
+}
+
 // Generate Given a Column map with datatypes and a name structName,
 // attempts to generate a struct definition
-func Generate(columnTypes map[string]map[string]string, tableName string, structName string, pkgName string, jsonAnnotation bool, gormAnnotation bool, gureguTypes bool, createdKey, updatedKey string) ([]byte, error) {
+// 写入一个文件
+func GenerateOne(columnTypes map[string]map[string]string, tableName string, structName string, pkgName string, jsonAnnotation bool, gormAnnotation bool, gureguTypes bool, createdKey, updatedKey string) ([]byte, error) {
 	var dbTypes string
 	dbTypes = generateMysqlTypes(columnTypes, 0, jsonAnnotation, gormAnnotation, gureguTypes)
 	// package
@@ -97,21 +163,88 @@ func Generate(columnTypes map[string]map[string]string, tableName string, struct
 		structName,
 		dbTypes)
 	if gormAnnotation == true {
-		src = fmt.Sprintf("%s\n%s", src, tpl(structName, createdKey, updatedKey))
-		tableNameFunc :=
-			"func (a *" + Lcfirst(structName) + ") TableName() string {\n" +
-				"	return \"" + tableName + "\"" +
-				"}"
-		src = fmt.Sprintf("%s\n%s", src, tableNameFunc)
+		// 把所有的写入到一个文件
+		src = fmt.Sprintf("%s\n%s", src, tpl(structName, createdKey, updatedKey, tableName))
+		fp, _ := os.Create(tableName + ".go")
+		formatted, err := format.Source([]byte(src))
+		if err != nil {
+			err = fmt.Errorf("error formatting: %s, was formatting\n%s", err, src)
+		}
+		_, _ = fp.WriteString(string(formatted))
+		_ = fp.Close()
 	}
-	formatted, err := format.Source([]byte(src))
-	if err != nil {
-		err = fmt.Errorf("error formatting: %s, was formatting\n%s", err, src)
-	}
-	return formatted, err
+	return []byte("done"), nil
 }
 
-func tpl(structName, createdKey, updatedKey string) string {
+func repoTpl(structName, createdKey, updatedKey, tableName string) string {
+	t := template.New("fieldname example")
+	t = t.Funcs(template.FuncMap{"lcfirst": Lcfirst})
+	t = t.Funcs(template.FuncMap{"goformat": goFormat})
+	t, _ = t.Parse(getRepositoryTpl())
+	if createdKey == "" {
+		createdKey = createdAtKey
+	}
+	if updatedKey == "" {
+		updatedKey = updatedATKey
+	}
+
+	if createdKey == "" || updatedKey == "" {
+		log.Fatal("未找到创建时间字段、更新时间字段，请指定--created_at --updated_at选项")
+	}
+
+	var buf bytes.Buffer
+	var p = struct {
+		StructName   string
+		PrimaryKey   string
+		CreatedAtKey string
+		UpdatedAtKey string
+		TableName    string
+	}{
+		structName,
+		pk,
+		createdKey,
+		updatedKey,
+		tableName,
+	}
+	_ = t.Execute(&buf, p)
+	return buf.String()
+}
+
+func repoInterfaceTpl(structName, createdKey, updatedKey, tableName string) string {
+	t := template.New("fieldname example")
+	t = t.Funcs(template.FuncMap{"lcfirst": Lcfirst})
+	t = t.Funcs(template.FuncMap{"goformat": goFormat})
+	t, _ = t.Parse(getRepositoryInterfaceTpl())
+	if createdKey == "" {
+		createdKey = createdAtKey
+	}
+	if updatedKey == "" {
+		updatedKey = updatedATKey
+	}
+
+	if createdKey == "" || updatedKey == "" {
+		log.Fatal("未找到创建时间字段、更新时间字段，请指定--created_at --updated_at选项")
+	}
+
+	var buf bytes.Buffer
+	var p = struct {
+		StructName   string
+		PrimaryKey   string
+		CreatedAtKey string
+		UpdatedAtKey string
+		TableName    string
+	}{
+		structName,
+		pk,
+		createdKey,
+		updatedKey,
+		tableName,
+	}
+	_ = t.Execute(&buf, p)
+	return buf.String()
+}
+
+func tpl(structName, createdKey, updatedKey, tableName string) string {
 	t := template.New("fieldname example")
 	t = t.Funcs(template.FuncMap{"lcfirst": Lcfirst})
 	t = t.Funcs(template.FuncMap{"goformat": goFormat})
@@ -133,11 +266,13 @@ func tpl(structName, createdKey, updatedKey string) string {
 		PrimaryKey   string
 		CreatedAtKey string
 		UpdatedAtKey string
+		TableName    string
 	}{
 		structName,
 		pk,
 		createdKey,
 		updatedKey,
+		tableName,
 	}
 	_ = t.Execute(&buf, p)
 	return buf.String()

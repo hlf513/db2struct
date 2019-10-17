@@ -28,6 +28,7 @@ var updatedKey = goopt.String([]string{"--update_at", "--updatedAtKey"}, "", "na
 var jsonAnnotation = goopt.Flag([]string{"--json"}, []string{"--no-json"}, "Add json annotations (default)", "Disable json annotations")
 var gormAnnotation = goopt.Flag([]string{"--gorm"}, []string{}, "Add gorm annotations (tags)", "")
 var gureguTypes = goopt.Flag([]string{"--guregu"}, []string{}, "Add guregu null types", "")
+var action = goopt.Flag([]string{"-s", "--split"}, []string{}, "写入多个文件", "")
 
 func init() {
 	goopt.OptArg([]string{"-p", "--password"}, "", "Mysql password", getMariadbPassword)
@@ -100,7 +101,13 @@ func main() {
 		*packageName = "model"
 	}
 	// Generate struct string based on columnDataTypes
-	struc, err := db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *createdKey, *updatedKey)
+	var struc []byte
+	if *action {
+		struc, err = db2struct.Generate(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *createdKey, *updatedKey)
+	}else{
+		// 写入一个文件
+		struc, err = db2struct.GenerateOne(*columnDataTypes, *mariadbTable, *structName, *packageName, *jsonAnnotation, *gormAnnotation, *gureguTypes, *createdKey, *updatedKey)
+	}
 
 	if err != nil {
 		fmt.Println("Error in creating struct from json: " + err.Error())
@@ -108,7 +115,6 @@ func main() {
 	}
 
 	fmt.Println(string(struc))
-
 }
 
 func getMariadbPassword(password string) error {

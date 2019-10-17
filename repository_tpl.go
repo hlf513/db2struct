@@ -1,23 +1,20 @@
 package db2struct
 
-import "unicode"
-
 // StructName   string
 // PrimaryKey   string
 // CreatedAtKey string
 // UpdatedAtKey string
 // TableName    string
-func getTpl() string {
+func getRepositoryInterfaceTpl() string {
 	return `
 type {{.StructName}}Repository interface {
 	TableName() string
+	Create(data *model.{{.StructName}}) (int, error)
 
-	Create(data *{{.StructName}}) (int, error)
-
-	FetchOneById(id int, fields string) (*{{.StructName}}, error)
-	FetchOne(where map[string]interface{}, fields string) (*{{.StructName}}, error)
-	FetchByWhere(where map[string]interface{}, fields string) ([]*{{.StructName}}, error)
-	FetchByIds(ids []int, fields string) ([]*{{.StructName}}, error)
+	FetchOneById(id int, fields string) (*model.{{.StructName}}, error)
+	FetchOne(where map[string]interface{}, fields string) (*model.{{.StructName}}, error)
+	FetchByWhere(where map[string]interface{}, fields string) ([]*model.{{.StructName}}, error)
+	FetchByIds(ids []int, fields string) ([]*model.{{.StructName}}, error)
 
 	DeleteOneById(id int) error
 	DeleteByWhere(where map[string]interface{}) error
@@ -26,22 +23,26 @@ type {{.StructName}}Repository interface {
 	UpdateByWhere(where, set map[string]interface{}) error
 
 	CountByWhere(where map[string]interface{}) (int, error)
-	Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*{{.StructName}}, error)
+	Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*model.{{.StructName}}, error)
+}
+`
 }
 
+func getRepositoryTpl() string  {
+	return `
 type {{.StructName | lcfirst }} struct {
 	db *gorm.DB
-}
-
-func New{{.StructName}}Repository(db *gorm.DB) {{.StructName}}Repository {
-	return &{{.StructName | lcfirst }}{db}
 }
 
 func (a *{{.StructName|lcfirst}}) TableName() string {
 	return   "{{.TableName}}"
 }
 
-func (a *{{.StructName|lcfirst}}) Create(data *{{.StructName}}) (int, error) {
+func New{{.StructName}}Repository(db *gorm.DB) repository.{{.StructName}}Repository {
+	return &{{.StructName | lcfirst }}{db}
+}
+
+func (a *{{.StructName|lcfirst}}) Create(data *model.{{.StructName}}) (int, error) {
 	if a.db.NewRecord(data) {
 		data.{{.CreatedAtKey|goformat}} = time.Now()
 		data.{{.UpdatedAtKey|goformat}} = time.Now()
@@ -53,8 +54,8 @@ func (a *{{.StructName|lcfirst}}) Create(data *{{.StructName}}) (int, error) {
 	return 0, errors.New("this is not a new record")
 }
 
-func (a *{{.StructName|lcfirst}}) FetchOneById(id int, fields string) (*{{.StructName}}, error) {
-	var ret {{.StructName}}
+func (a *{{.StructName|lcfirst}}) FetchOneById(id int, fields string) (*model.{{.StructName}}, error) {
+	var ret model.{{.StructName}}
 
 	err := a.db.Select(fields).First(&ret, id).Error
 	if err == gorm.ErrRecordNotFound {
@@ -67,8 +68,8 @@ func (a *{{.StructName|lcfirst}}) FetchOneById(id int, fields string) (*{{.Struc
 	return &ret, nil
 }
 
-func (a *{{.StructName|lcfirst}}) FetchOne(where map[string]interface{}, fields string) (*{{.StructName}}, error) {
-	var ret {{.StructName}}
+func (a *{{.StructName|lcfirst}}) FetchOne(where map[string]interface{}, fields string) (*model.{{.StructName}}, error) {
+	var ret model.{{.StructName}}
 
 	q := a.db.Select(fields)
 	for k, v := range where {
@@ -91,8 +92,8 @@ func (a *{{.StructName|lcfirst}}) FetchOne(where map[string]interface{}, fields 
 	return &ret, nil
 }
 
-func (a *{{.StructName|lcfirst}}) FetchByWhere(where map[string]interface{}, fields string) ([]*{{.StructName}}, error) {
-	var ret []*{{.StructName}}
+func (a *{{.StructName|lcfirst}}) FetchByWhere(where map[string]interface{}, fields string) ([]*model.{{.StructName}}, error) {
+	var ret []*model.{{.StructName}}
 
 	q := a.db.Select(fields)
 	for k, v := range where {
@@ -115,8 +116,8 @@ func (a *{{.StructName|lcfirst}}) FetchByWhere(where map[string]interface{}, fie
 	return ret, nil
 }
 
-func (a *{{.StructName|lcfirst}}) FetchByIds(ids []int, fields string) ([]*{{.StructName}}, error) {
-	var ret []*{{.StructName}}
+func (a *{{.StructName|lcfirst}}) FetchByIds(ids []int, fields string) ([]*model.{{.StructName}}, error) {
+	var ret []*model.{{.StructName}}
 
 	err := a.db.Select(fields).Find(&ret, ids).Error
 	if err == gorm.ErrRecordNotFound {
@@ -131,7 +132,7 @@ func (a *{{.StructName|lcfirst}}) FetchByIds(ids []int, fields string) ([]*{{.St
 }
 
 func (a *{{.StructName|lcfirst}}) DeleteOneById(id int) error {
-	d := {{.StructName}}{ {{.PrimaryKey|goformat}}: id}
+	d := model.{{.StructName}}{ {{.PrimaryKey|goformat}}: id}
 	if err := a.db.Delete(&d).Limit(1).Error; err != nil {
 		return err
 	}
@@ -147,7 +148,7 @@ func (a *{{.StructName|lcfirst}}) DeleteByWhere(where map[string]interface{}) er
 			q = q.Where(k)
 		}
 	}
-	if err := q.Delete({{.StructName}}{}).Error; err != nil {
+	if err := q.Delete(model.{{.StructName}}{}).Error; err != nil {
 		return err
 	}
 	return nil
@@ -155,7 +156,7 @@ func (a *{{.StructName|lcfirst}}) DeleteByWhere(where map[string]interface{}) er
 
 func (a *{{.StructName|lcfirst}}) UpdateOneById(id int, set map[string]interface{}) error {
 	set["{{.UpdatedAtKey}}"] = time.Now()
-	if err := a.db.Model({{.StructName}}{ {{.PrimaryKey|goformat}}: id}).Update(set).Limit(1).Error; err != nil {
+	if err := a.db.Model(model.{{.StructName}}{ {{.PrimaryKey|goformat}}: id}).Update(set).Limit(1).Error; err != nil {
 		return err
 	}
 	return nil
@@ -164,7 +165,7 @@ func (a *{{.StructName|lcfirst}}) UpdateOneById(id int, set map[string]interface
 func (a *{{.StructName|lcfirst}}) UpdateByWhere(where, set map[string]interface{}) error {
 	set["{{.UpdatedAtKey}}"] = time.Now()
 
-	q := a.db.Model({{.StructName}}{})
+	q := a.db.Model(model.{{.StructName}}{})
 	for k, v := range where {
 		q = q.Where(k, v)
 	}
@@ -178,7 +179,7 @@ func (a *{{.StructName|lcfirst}}) UpdateByWhere(where, set map[string]interface{
 func (a *{{.StructName|lcfirst}}) CountByWhere(where map[string]interface{}) (int, error) {
 	c := 0
 
-	q := a.db.Model({{.StructName}}{})
+	q := a.db.Model(model.{{.StructName}}{})
 	for k, v := range where {
 		if v != nil {
 			q = q.Where(k, v)
@@ -193,8 +194,8 @@ func (a *{{.StructName|lcfirst}}) CountByWhere(where map[string]interface{}) (in
 	return c, nil
 }
 
-func (a *{{.StructName|lcfirst}}) Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*{{.StructName}}, error) {
-	var ret []*{{.StructName}}
+func (a *{{.StructName|lcfirst}}) Search(where map[string]interface{}, field string, others ...map[string]interface{}) ([]*model.{{.StructName}}, error) {
+	var ret []*model.{{.StructName}}
 
 	q := a.db.Select(field)
 	for k, v := range where {
@@ -241,15 +242,5 @@ func (a *{{.StructName|lcfirst}}) Search(where map[string]interface{}, field str
 	return ret, nil
 }
 `
-}
-
-func Lcfirst(str string) string {
-	for i, v := range str {
-		return string(unicode.ToLower(v)) + str[i+1:]
-	}
-	return ""
-}
-
-func goFormat(str string) string {
-	return fmtFieldName(stringifyFirstChar(str))
+	
 }

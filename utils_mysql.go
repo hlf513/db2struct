@@ -66,6 +66,22 @@ func GetColumnsFromMysqlTable(mariadbUser string, mariadbPassword string, mariad
 var pk, createdAtKey, updatedATKey string
 var haveNull bool
 
+func generateAllImport() string {
+	i := `
+import (
+	"time"
+	
+	"github.com/jinzhu/gorm"
+`
+	if haveNull == true {
+		i = fmt.Sprintf("%s\"gopkg.in/guregu/null.v3\"", i)
+	}
+	i += `
+)
+`
+	return i
+}
+
 func generateImport() string {
 	i := `
 import (
