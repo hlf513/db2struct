@@ -31,7 +31,7 @@ func GetColumnsFromMysqlTable(mariadbUser string, mariadbPassword string, mariad
 	// Store colum as map of maps
 	columnDataTypes := make(map[string]map[string]string)
 	// Select columnd data from INFORMATION_SCHEMA
-	columnDataTypeQuery := "SELECT COLUMN_NAME, COLUMN_KEY, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND table_name = ?"
+	columnDataTypeQuery := "SELECT COLUMN_NAME, COLUMN_KEY, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND table_name = ? ORDER BY ORDINAL_POSITION ASC"
 
 	if Debug {
 		fmt.Println("running: " + columnDataTypeQuery)
@@ -57,6 +57,7 @@ func GetColumnsFromMysqlTable(mariadbUser string, mariadbPassword string, mariad
 		rows.Scan(&column, &columnKey, &dataType, &nullable)
 
 		columnDataTypes[column] = map[string]string{"value": dataType, "nullable": nullable, "primary": columnKey}
+		fmt.Println(column)
 		sortFields = append(sortFields, column)
 	}
 

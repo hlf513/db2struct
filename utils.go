@@ -81,7 +81,7 @@ var intToWordMap = []string{
 	"nine",
 }
 
-//Debug level logging
+// Debug level logging
 var Debug = false
 
 // 写入不同目录的文件中(分层)
@@ -100,8 +100,8 @@ func Generate(columnTypes map[string]map[string]string, tableName string, struct
 	if gormAnnotation == true {
 		// model
 		if _, err := os.Stat("./model"); os.IsNotExist(err) {
-			err := os.Mkdir("model",0755)
-			if err != nil{
+			err := os.Mkdir("model", 0755)
+			if err != nil {
 				log.Fatal(err.Error())
 			}
 		}
@@ -113,8 +113,8 @@ func Generate(columnTypes map[string]map[string]string, tableName string, struct
 		_ = ioutil.WriteFile(path, formatted, 0644)
 		// repository_interface
 		if _, err := os.Stat("./repository"); os.IsNotExist(err) {
-			err := os.Mkdir("repository",0755)
-			if err != nil{
+			err := os.Mkdir("repository", 0755)
+			if err != nil {
 				log.Fatal(err.Error())
 			}
 		}
@@ -129,8 +129,8 @@ func Generate(columnTypes map[string]map[string]string, tableName string, struct
 
 		// repository
 		if _, err := os.Stat("./repository/mysql"); os.IsNotExist(err) {
-			err := os.Mkdir("repository/mysql",0755)
-			if err != nil{
+			err := os.Mkdir("repository/mysql", 0755)
+			if err != nil {
 				log.Fatal(err.Error())
 			}
 		}
